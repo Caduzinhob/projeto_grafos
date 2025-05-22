@@ -26,7 +26,7 @@ def processar_arquivo(args):
         # Salva a solução
         nome_saida = f"sol-{os.path.splitext(nome_arq)[0]}.dat"
         caminho_saida = os.path.join(pasta_saida, nome_saida)
-        salvar_solucao(rotas, capacidade, caminho_saida)
+        salvar_solucao(rotas, grafo, capacidade, caminho_saida)
         
         # Libera memória explicitamente
         del grafo

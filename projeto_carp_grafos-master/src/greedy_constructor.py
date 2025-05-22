@@ -33,7 +33,6 @@ def dijkstra_com_cache(adj, vertices):
                 continue
             visitados.add(u)
             
-            # Como os vizinhos já estão ordenados por peso, podemos parar antes
             for v, peso in adj[u]:
                 if v not in visitados:
                     nova_dist = d + peso
@@ -43,23 +42,68 @@ def dijkstra_com_cache(adj, vertices):
         return dist
     return dijkstra
 
+def calcular_custo_rota(rota, grafo, deposito, shortest_path):
+    """Calcula o custo total de uma rota incluindo deslocamentos"""
+    if not rota:
+        return 0
+    
+    custo_total = 0
+    pos_atual = deposito
+    
+    # Custo para ir do depósito ao primeiro serviço
+    primeiro_servico = rota[0]
+    custo_total += shortest_path(deposito)[primeiro_servico['u']]
+    
+    # Custo dos serviços e deslocamentos entre eles
+    for i, servico in enumerate(rota):
+        # Custo do serviço
+        custo_total += servico['custo']
+        
+        # Se não é o último serviço, adiciona custo até o próximo
+        if i < len(rota) - 1:
+            proximo = rota[i + 1]
+            custo_total += shortest_path(servico['v'])[proximo['u']]
+    
+    # Custo para voltar ao depósito do último serviço
+    ultimo_servico = rota[-1]
+    custo_total += shortest_path(ultimo_servico['v'])[deposito]
+    
+    return custo_total
+
+def encontrar_servico_mais_proximo(pos_atual, servicos_disponiveis, shortest_path):
+    """Encontra o serviço mais próximo da posição atual"""
+    melhor_servico = None
+    menor_distancia = float('inf')
+    
+    for s in servicos_disponiveis:
+        # Calcula distância até o início do serviço
+        dist = shortest_path(pos_atual)[s['u']]
+        if dist < menor_distancia:
+            menor_distancia = dist
+            melhor_servico = s
+            
+    return melhor_servico, menor_distancia
+
 def greedy_constructor(grafo, capacidade, deposito='1'):
     print(f"  Iniciando construção gulosa (capacidade: {capacidade})")
     
-    # Pré-processa serviços requeridos com seus custos
+    # Cria estruturas auxiliares
+    adj = criar_lista_adjacencia(grafo)
+    shortest_path = dijkstra_com_cache(adj, grafo.vertices)
+    
+    # Pré-processa serviços requeridos
     servicos = []
     
     # Processa vértices requeridos
     for v in grafo.vertices_req:
-        demanda = 1  # Demanda padrão para visitar o vértice
-        custo = 1    # Custo padrão para visitar o vértice
+        # Usa a distância do depósito como custo base
+        custo_base = shortest_path(deposito)[v]
         servicos.append({
             'u': v,
             'v': v,  # Mesmo vértice pois é uma visita
-            'demanda': demanda,
-            'custo': custo,
-            'tipo': 'vertice',
-            'ratio': custo / demanda
+            'demanda': 1,  # Demanda padrão para visitar o vértice
+            'custo': custo_base,
+            'tipo': 'vertice'
         })
     
     # Processa arestas requeridas
@@ -75,8 +119,7 @@ def greedy_constructor(grafo, capacidade, deposito='1'):
             'v': v,
             'demanda': demanda,
             'custo': custo,
-            'tipo': 'aresta',
-            'ratio': custo / demanda if demanda > 0 else float('inf')
+            'tipo': 'aresta'
         })
     
     # Processa arcos requeridos
@@ -92,8 +135,7 @@ def greedy_constructor(grafo, capacidade, deposito='1'):
             'v': v,
             'demanda': demanda,
             'custo': custo,
-            'tipo': 'arco',
-            'ratio': custo / demanda if demanda > 0 else float('inf')
+            'tipo': 'arco'
         })
     
     print(f"  Total de serviços: {len(servicos)} ({len(grafo.vertices_req)} vértices, {len(grafo.arestas_req)} arestas, {len(grafo.arcos_req)} arcos)")
@@ -102,37 +144,50 @@ def greedy_constructor(grafo, capacidade, deposito='1'):
         print("  Nenhum serviço para processar!")
         return []
     
-    # Ordena serviços por ratio (custo/demanda)
-    servicos.sort(key=lambda s: s['ratio'])
-    
     # Usa set para operações O(1)
-    nao_atendidos = set((s['u'], s['v'], s['tipo']) for s in servicos)
+    servicos_disponiveis = set((s['u'], s['v'], s['tipo']) for s in servicos)
+    servicos_por_chave = {(s['u'], s['v'], s['tipo']): s for s in servicos}
     rotas = []
-    total_servicos = len(nao_atendidos)
+    total_servicos = len(servicos_disponiveis)
     
-    # Função para verificar se um serviço pode ser adicionado à rota atual
-    def pode_adicionar_servico(servico, carga_atual):
-        return servico['demanda'] + carga_atual <= capacidade
-    
-    while nao_atendidos:
+    while servicos_disponiveis:
         rota = []
         carga = 0
+        pos_atual = deposito
         servicos_na_rota = 0
         
-        # Tenta adicionar serviços à rota atual
-        for s in servicos:
-            if (s['u'], s['v'], s['tipo']) not in nao_atendidos:
-                continue
+        # Constrói a rota usando o serviço mais próximo
+        while servicos_disponiveis:
+            # Encontra o serviço mais próximo da posição atual
+            servicos_candidatos = [servicos_por_chave[chave] for chave in servicos_disponiveis]
+            proximo_servico, dist = encontrar_servico_mais_proximo(pos_atual, servicos_candidatos, shortest_path)
+            
+            if proximo_servico is None:
+                break
                 
-            if pode_adicionar_servico(s, carga):
-                rota.append(s)
-                carga += s['demanda']
-                nao_atendidos.remove((s['u'], s['v'], s['tipo']))
-                servicos_na_rota += 1
+            # Verifica se cabe na capacidade
+            if carga + proximo_servico['demanda'] <= capacidade:
+                # Calcula custo real da rota com o novo serviço
+                rota_teste = rota + [proximo_servico]
+                custo_atual = calcular_custo_rota(rota, grafo, deposito, shortest_path)
+                custo_novo = calcular_custo_rota(rota_teste, grafo, deposito, shortest_path)
+                
+                # Só adiciona se o aumento no custo for razoável
+                aumento_custo = custo_novo - custo_atual
+                if len(rota) == 0 or aumento_custo <= 2 * proximo_servico['custo']:
+                    rota.append(proximo_servico)
+                    carga += proximo_servico['demanda']
+                    servicos_disponiveis.remove((proximo_servico['u'], proximo_servico['v'], proximo_servico['tipo']))
+                    servicos_na_rota += 1
+                    pos_atual = proximo_servico['v']
+                    continue
+            
+            # Se chegou aqui, não conseguiu adicionar o serviço
+            break
         
         if servicos_na_rota > 0:
             rotas.append(rota)
-            print(f"  Rota {len(rotas)} criada com {servicos_na_rota} serviços (restam {len(nao_atendidos)} de {total_servicos})")
+            print(f"  Rota {len(rotas)} criada com {servicos_na_rota} serviços (restam {len(servicos_disponiveis)} de {total_servicos})")
         else:
             # Se não conseguiu adicionar nenhum serviço, provavelmente a capacidade é muito pequena
             print("  Aviso: Não foi possível adicionar mais serviços - capacidade insuficiente")
