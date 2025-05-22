@@ -57,28 +57,32 @@ def ler_arquivo_dat(nome_arquivo):
 
                 elif secao_atual == 'ReE':
                     u, v = parts[1], parts[2]
-                    peso = int(parts[3])
-                    grafo.add_aresta_req(u, v, peso)
+                    custo = int(parts[3])
+                    demanda = int(parts[4]) if len(parts) > 4 else 0
+                    grafo.add_aresta_req(u, v, [custo, demanda])
                     arestas_processadas += 1
 
                 elif secao_atual == 'EDGE':
                     if len(parts) >= 3:
                         u, v = parts[1], parts[2]
-                        peso = int(parts[3])
-                        grafo.add_aresta(u, v, peso)
+                        custo = int(parts[3])
+                        demanda = 0  # Arestas não requeridas não têm demanda
+                        grafo.add_aresta(u, v, [custo, demanda])
                         arestas_processadas += 1
 
                 elif secao_atual == 'ReA':
                     u, v = parts[1], parts[2]
-                    peso = int(parts[3])
-                    grafo.add_arco_req(u, v, peso)
+                    custo = int(parts[3])
+                    demanda = int(parts[4]) if len(parts) > 4 else 0
+                    grafo.add_arco_req(u, v, [custo, demanda])
                     arcos_processados += 1
 
                 elif secao_atual == 'ARC':
                     if len(parts) >= 4 and parts[0].startswith('NrA'):
                         u, v = parts[1], parts[2]
-                        peso = int(parts[3])
-                        grafo.add_arco(u, v, peso)
+                        custo = int(parts[3])
+                        demanda = 0  # Arcos não requeridos não têm demanda
+                        grafo.add_arco(u, v, [custo, demanda])
                         arcos_processados += 1
 
             except (IndexError, ValueError) as e:

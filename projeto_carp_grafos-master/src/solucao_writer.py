@@ -1,10 +1,6 @@
-from greedy_constructor import criar_lista_adjacencia, dijkstra_com_cache, calcular_custo_rota
+from greedy_constructor import calcular_custo_rota
 
 def salvar_solucao(rotas, grafo, capacidade, nome_arquivo_saida, deposito='1'):
-    # Cria estruturas auxiliares para cálculo de caminhos mínimos
-    adj = criar_lista_adjacencia(grafo)
-    shortest_path = dijkstra_com_cache(adj, grafo.vertices)
-    
     # Cálculo dos totais
     custo_total = 0
     total_rotas = len(rotas)
@@ -16,7 +12,7 @@ def salvar_solucao(rotas, grafo, capacidade, nome_arquivo_saida, deposito='1'):
     for idx, rota in enumerate(rotas, 1):
         # Calcula demanda e custo total da rota (incluindo deslocamentos)
         demanda_rota = sum(s['demanda'] for s in rota)
-        custo_rota = calcular_custo_rota(rota, grafo, deposito, shortest_path)
+        custo_rota = calcular_custo_rota(rota, grafo, deposito)
         custo_total += custo_rota
         
         # Número de visitas (serviços + depósito no início e fim)
