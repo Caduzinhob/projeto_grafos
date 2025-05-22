@@ -1,14 +1,15 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '../etapa1'))
 from utils_grafo import ler_arquivo_dat
 from path_scanning import path_scanning
 from solucao_writer import salvar_solucao
 from greedy_constructor import greedy_constructor
 
 def main():
-    pasta_instancias = os.path.join('..', 'selected_instances')
-    pasta_saida = os.path.join('solucoes')
+    # Usando caminhos absolutos baseados na localização do script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    pasta_instancias = os.path.abspath(os.path.join(script_dir, '..', 'selected_instances'))
+    pasta_saida = os.path.abspath(os.path.join(script_dir, 'solucoes'))
     os.makedirs(pasta_saida, exist_ok=True)
     capacidade = 15  # Ajuste conforme necessário para cada instância
     algoritmo = 'greedy'  # padrão
